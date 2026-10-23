@@ -103,11 +103,11 @@ dependencies {
     // 以下依赖按里程碑逐步启用，M1 先不引入，避免首次 Sync 出现
     // 与本阶段无关的解析失败或 method count 膨胀。
 
-    // TODO(M5)
-    // implementation(libs.mlkit.text.recognition)
-    // implementation(libs.mlkit.text.recognition.chinese)
-
     // TODO(M6)
     // implementation(libs.pdfbox.android)
     // implementation(libs.coil.compose)
+
+    // OCR：bundled 版，模型随 APK 分发，识别完全离线，不依赖 Play Services 运行时下载
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.text.recognition.chinese)
 }

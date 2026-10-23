@@ -6,12 +6,19 @@
       权限说明（最小化原则）：
         INTERNET     — 调用 DeepSeek API 唯一需要的权限
         NETWORK_STATE— 用于在断网时给出明确提示
+        CAMERA       — 仅"拍照识别"使用；拒绝后相册与文本翻译不受影响
       不申请 READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE：
         图片走 Photo Picker，文件走 SAF(OpenDocument)，均无需存储权限。
-      CAMERA 在 M5（拍照翻译）时再添加，届时改为 <uses-feature required="false">。
     -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 拍照翻译用；相册选择走 Photo Picker，不需要任何存储权限 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- 相机不是必需硬件，平板/无摄像头设备也应能安装 -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <!-- 屏蔽第三方库自动合并进来的权限/遥测 -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
@@ -37,5 +44,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          拍照结果写入 cacheDir，通过 FileProvider 授权给相机应用读取。
+          不申请存储权限，也不用外部存储。
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

@@ -9,6 +9,7 @@ import com.papertong.app.core.history.FileHistoryStore
 import java.io.File
 import com.papertong.app.core.settings.DataStoreSettingsRepository
 import com.papertong.app.core.settings.SettingsRepository
+import com.papertong.app.data.ocr.OcrEngine
 import com.papertong.app.data.translate.TranslationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,12 @@ class AppContainer(context: Context) {
     val historyStore: FileHistoryStore = FileHistoryStore(
         file = File(appContext.filesDir, FileHistoryStore.FILE_NAME)
     )
+
+    /**
+     * OCR 引擎持有 ML Kit 识别器，创建有成本，
+     * 整个 App 共用一份，不随页面销毁。
+     */
+    val ocrEngine: OcrEngine = OcrEngine()
 
     /** 用于不绑定界面生命周期的任务（例如后续的后台解析）。 */
     val applicationScope: CoroutineScope =

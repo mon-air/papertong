@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  只暴露 cache 下的 ocr 子目录，其余目录一律不对外。
+  拍照的原始照片在识别完成后由调用方删除。
+-->
+<paths>
+    <cache-path
+        name="ocr_capture"
+        path="ocr/" />
+</paths>

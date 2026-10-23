@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +51,7 @@ import com.papertong.app.ui.LocalAppContainer
 import com.papertong.app.ui.components.DirectionSelector
 import com.papertong.app.ui.components.PaperCard
 import com.papertong.app.ui.components.SimpleTopBar
+import com.papertong.app.ui.components.SourceChip
 import com.papertong.app.ui.theme.PaperTongTheme
 import com.papertong.app.ui.theme.ReadingTextStyle
 
@@ -56,6 +59,9 @@ import com.papertong.app.ui.theme.ReadingTextStyle
 fun TranslateScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenOcr: () -> Unit,
+    incomingText: String?,
+    onIncomingTextConsumed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val container = LocalAppContainer.current
@@ -72,6 +78,15 @@ fun TranslateScreen(
     val model by viewModel.model.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
 
+    // OCR 页回填的文本：取用一次后立刻从 savedStateHandle 摘掉，
+    // 否则每次重组都会覆盖用户正在编辑的内容。
+    LaunchedEffect(incomingText) {
+        if (!incomingText.isNullOrBlank()) {
+            viewModel.onInputChange(incomingText)
+            onIncomingTextConsumed()
+        }
+    }
+
     TranslateScreenContent(
         state = state,
         styleLabel = style.label,
@@ -84,6 +99,7 @@ fun TranslateScreen(
         onClear = viewModel::clear,
         onOpenSettings = onOpenSettings,
         onOpenHistory = onOpenHistory,
+        onOpenOcr = onOpenOcr,
         modifier = modifier
     )
 }
@@ -101,6 +117,7 @@ private fun TranslateScreenContent(
     onClear: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenOcr: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val clipboard = LocalClipboardManager.current
@@ -165,6 +182,13 @@ private fun TranslateScreenContent(
             )
 
             Spacer(Modifier.height(10.dp))
+
+            // ---- 导入入口：图片 OCR（文件导入在 M6 接入） ----
+            SourceChip(
+                icon = Icons.Outlined.Image,
+                label = "图片识别",
+                onClick = onOpenOcr
+            )
 
             Spacer(Modifier.height(10.dp))
 
@@ -334,7 +358,8 @@ private fun TranslateScreenPreview() {
             onCancel = {},
             onClear = {},
             onOpenSettings = {},
-            onOpenHistory = {}
+            onOpenHistory = {},
+            onOpenOcr = {}
         )
     }
 }
