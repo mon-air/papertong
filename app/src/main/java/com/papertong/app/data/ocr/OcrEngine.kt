@@ -52,7 +52,9 @@ class OcrEngine {
             // 位图长边已限制在 2000px 以内（约 16MB 上限），交给 GC 即可。
             try {
                 val image = InputImage.fromBitmap(bitmap, 0)
-                suspendCancellableCoroutine { continuation ->
+                // 必须显式给出 <Result>：否则 lambda 的类型参数会被推导成 Unit，
+                // 整个 try 表达式就变成 Unit 与 Result 的公共父类型 Any。
+                suspendCancellableCoroutine<Result> { continuation ->
                     recognizer.process(image)
                         .addOnSuccessListener { visionText ->
                             continuation.resume(
