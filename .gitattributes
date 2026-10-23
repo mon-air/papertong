@@ -1,0 +1,19 @@
+# 统一换行，避免 Windows 工作区把 CRLF 带进仓库导致 Linux CI 上脚本失效
+* text=auto eol=lf
+
+*.kt text
+*.kts text
+*.xml text
+*.toml text
+*.properties text
+*.yml text
+*.yaml text
+*.md text
+*.pro text
+
+# 二进制
+*.jar binary
+*.png binary
+*.jpg binary
+*.apk binary
+*.keystore binary

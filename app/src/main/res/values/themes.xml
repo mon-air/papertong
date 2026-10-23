@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  这里只定义窗口级主题。所有 UI 样式由 Compose 的 MaterialTheme 接管，
+  使用平台 Material 主题作为父级，避免额外引入 com.google.android.material 依赖。
+-->
+<resources>
+    <style name="Theme.PaperTong" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  注意：本文件不能做“出站域名白名单”，它只控制明文(HTTP)流量与证书信任锚点。
+  出站隔离靠两点：
+    1) 这里全面禁止明文 HTTP，DeepSeek API 为 HTTPS；
+    2) 用户若填写自定义 baseUrl，UI 层要求二次确认（M2 实现）。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 仅 debug 构建允许 adb 抓包调试；release 不生效 -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
