@@ -19,22 +19,124 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.papertong.app.core.model.ModelOption
+import com.papertong.app.core.model.TranslateStyle
+import com.papertong.app.ui.LocalAppContainer
+import com.papertong.app.ui.components.ChoiceItem
+import com.papertong.app.ui.components.ChoiceSheet
 import com.papertong.app.ui.components.PaperCard
 import com.papertong.app.ui.components.SimpleTopBar
 import com.papertong.app.ui.theme.PaperTongTheme
 
-/**
- * M1：设置页骨架。M2 会在此接入 API Key 输入与加密存储，
- * M3 前后接入模型选择、默认风格、自定义提示词。
- */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val container = LocalAppContainer.current
+    val viewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.factory(
+            container.secretStore,
+            container.settingsRepository,
+            container.apiKeyValidator
+        )
+    )
+
+    val style by viewModel.style.collectAsStateWithLifecycle()
+    val model by viewModel.model.collectAsStateWithLifecycle()
+    val hasApiKey by viewModel.hasApiKey.collectAsStateWithLifecycle()
+    val apiKeyState by viewModel.apiKeyState.collectAsStateWithLifecycle()
+
+    var showKeyDialog by remember { mutableStateOf(false) }
+    var showStyleSheet by remember { mutableStateOf(false) }
+    var showModelSheet by remember { mutableStateOf(false) }
+
+    // 校验通过后自动收起对话框，提示留在页面上
+    LaunchedEffect(apiKeyState.justSaved) {
+        if (apiKeyState.justSaved) {
+            showKeyDialog = false
+        }
+    }
+
+    SettingsScreenContent(
+        style = style,
+        model = model,
+        hasApiKey = hasApiKey,
+        apiKeyState = apiKeyState,
+        onBack = onBack,
+        onOpenAbout = onOpenAbout,
+        onEditApiKey = {
+            viewModel.resetInput()
+            showKeyDialog = true
+        },
+        onDeleteApiKey = viewModel::deleteApiKey,
+        onPickStyle = { showStyleSheet = true },
+        onPickModel = { showModelSheet = true },
+        modifier = modifier
+    )
+
+    if (showKeyDialog) {
+        ApiKeyDialog(
+            state = apiKeyState,
+            onInputChange = viewModel::onApiKeyInputChange,
+            onToggleVisibility = viewModel::toggleVisibility,
+            onConfirm = viewModel::saveApiKey,
+            onDismiss = {
+                viewModel.clearMessage()
+                showKeyDialog = false
+            }
+        )
+    }
+
+    if (showStyleSheet) {
+        ChoiceSheet(
+            title = "翻译风格",
+            items = TranslateStyle.entries.map {
+                ChoiceItem(it, it.label, it.hint)
+            },
+            selected = style,
+            onSelect = viewModel::setStyle,
+            onDismiss = { showStyleSheet = false }
+        )
+    }
+
+    if (showModelSheet) {
+        ChoiceSheet(
+            title = "模型",
+            items = ModelOption.entries.map {
+                ChoiceItem(it, it.label, it.hint)
+            },
+            selected = model,
+            onSelect = viewModel::setModel,
+            onDismiss = { showModelSheet = false }
+        )
+    }
+}
+
+@Composable
+private fun SettingsScreenContent(
+    style: TranslateStyle,
+    model: ModelOption,
+    hasApiKey: Boolean,
+    apiKeyState: ApiKeyUiState,
+    onBack: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onEditApiKey: () -> Unit,
+    onDeleteApiKey: () -> Unit,
+    onPickStyle: () -> Unit,
+    onPickModel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -54,14 +156,40 @@ fun SettingsScreen(
             PaperCard(modifier = Modifier.fillMaxWidth()) {
                 SettingsRow(
                     title = "DeepSeek API Key",
-                    value = "未配置",
-                    onClick = {}
+                    value = if (hasApiKey) "已配置" else "未配置",
+                    onClick = onEditApiKey
                 )
                 RowDivider()
                 SettingsRow(
                     title = "模型",
-                    value = "deepseek-chat",
-                    onClick = {}
+                    value = model.label,
+                    onClick = onPickModel
+                )
+            }
+
+            if (hasApiKey) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "删除本机保存的 Key",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .clickable(onClick = onDeleteApiKey)
+                        .padding(horizontal = 4.dp, vertical = 8.dp)
+                )
+            }
+
+            if (apiKeyState.message != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = apiKeyState.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (apiKeyState.isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
             }
 
@@ -69,8 +197,8 @@ fun SettingsScreen(
             PaperCard(modifier = Modifier.fillMaxWidth()) {
                 SettingsRow(
                     title = "默认风格",
-                    value = "学术专业",
-                    onClick = {}
+                    value = style.label,
+                    onClick = onPickStyle
                 )
             }
 
@@ -114,8 +242,8 @@ private fun RowDivider() {
 }
 
 /**
- * 行本身不画背景（交给外层 PaperCard），只负责点击与排版，
- * 这样分组内的多行共用同一个圆角卡片。
+ * 行本身不画背景（交给外层 PaperCard），只负责点击与排版。
+ * 之前用 Surface 包裹会在按压后留下灰色残留，改用裸 Row + clickable。
  */
 @Composable
 private fun SettingsRow(
@@ -156,6 +284,17 @@ private fun SettingsRow(
 @Composable
 private fun SettingsScreenPreview() {
     PaperTongTheme {
-        SettingsScreen(onBack = {}, onOpenAbout = {})
+        SettingsScreenContent(
+            style = TranslateStyle.Academic,
+            model = ModelOption.Chat,
+            hasApiKey = false,
+            apiKeyState = ApiKeyUiState(),
+            onBack = {},
+            onOpenAbout = {},
+            onEditApiKey = {},
+            onDeleteApiKey = {},
+            onPickStyle = {},
+            onPickModel = {}
+        )
     }
 }

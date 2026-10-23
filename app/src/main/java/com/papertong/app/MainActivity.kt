@@ -5,7 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.papertong.app.ui.LocalAppContainer
 import com.papertong.app.ui.PaperTongRoot
 import com.papertong.app.ui.theme.PaperTongTheme
 
@@ -17,9 +19,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PaperTongTheme {
-                // enableEdgeToEdge 后内容会绘制到状态栏/导航栏下方，
-                // 在这里统一避开系统栏与输入法，各页面无需重复处理。
-                PaperTongRoot(modifier = Modifier.safeDrawingPadding())
+                CompositionLocalProvider(
+                    LocalAppContainer provides
+                        (application as PaperTongApplication).container
+                ) {
+                    // enableEdgeToEdge 后内容会绘制到状态栏/导航栏下方，
+                    // 在这里统一避开系统栏与输入法，各页面无需重复处理。
+                    PaperTongRoot(modifier = Modifier.safeDrawingPadding())
+                }
             }
         }
     }
