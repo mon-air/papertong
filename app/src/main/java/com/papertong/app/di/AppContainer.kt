@@ -7,6 +7,7 @@ import com.papertong.app.core.crypto.SecretStore
 import com.papertong.app.core.data.appDataStore
 import com.papertong.app.core.settings.DataStoreSettingsRepository
 import com.papertong.app.core.settings.SettingsRepository
+import com.papertong.app.data.translate.TranslationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,8 @@ class AppContainer(context: Context) {
     val settingsRepository: SettingsRepository = DataStoreSettingsRepository(dataStore)
 
     val apiKeyValidator: ApiKeyValidator = ApiKeyValidator()
+
+    val translationRepository: TranslationRepository = TranslationRepository(secretStore)
 
     /** 用于不绑定界面生命周期的任务（例如后续的后台解析）。 */
     val applicationScope: CoroutineScope =

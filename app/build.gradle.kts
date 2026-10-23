@@ -91,11 +91,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
-    // 网络（M3 起使用）
+    // 网络
+    // 不使用 retrofit2-kotlinx-serialization-converter：本项目只有 1 个接口，
+    // 且该库 1.0.0 起包名有变动，直接手写 JSON body 更稳、更少一个依赖。
     implementation(libs.retrofit)
-    implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
 
     // 设置存储（M2 起使用）
     implementation(libs.androidx.datastore.preferences)
