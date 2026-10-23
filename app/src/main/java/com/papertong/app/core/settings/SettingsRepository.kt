@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.papertong.app.core.model.ModelOption
+import com.papertong.app.core.model.TranslateDirection
 import com.papertong.app.core.model.TranslateStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.map
 interface SettingsRepository {
     val translateStyle: Flow<TranslateStyle>
     val model: Flow<ModelOption>
+    val direction: Flow<TranslateDirection>
 
     suspend fun setTranslateStyle(style: TranslateStyle)
     suspend fun setModel(model: ModelOption)
+    suspend fun setDirection(direction: TranslateDirection)
 }
 
 class DataStoreSettingsRepository(
@@ -34,6 +37,11 @@ class DataStoreSettingsRepository(
             ModelOption.fromId(prefs[KEY_MODEL])
         }
 
+    override val direction: Flow<TranslateDirection> =
+        dataStore.data.map { prefs ->
+            TranslateDirection.fromId(prefs[KEY_DIRECTION])
+        }
+
     override suspend fun setTranslateStyle(style: TranslateStyle) {
         dataStore.edit { prefs -> prefs[KEY_STYLE] = style.id }
     }
@@ -42,8 +50,13 @@ class DataStoreSettingsRepository(
         dataStore.edit { prefs -> prefs[KEY_MODEL] = model.id }
     }
 
+    override suspend fun setDirection(direction: TranslateDirection) {
+        dataStore.edit { prefs -> prefs[KEY_DIRECTION] = direction.id }
+    }
+
     private companion object {
         val KEY_STYLE = stringPreferencesKey("translate_style")
         val KEY_MODEL = stringPreferencesKey("model_id")
+        val KEY_DIRECTION = stringPreferencesKey("translate_direction")
     }
 }

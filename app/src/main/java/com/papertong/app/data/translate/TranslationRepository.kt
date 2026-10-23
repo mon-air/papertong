@@ -1,6 +1,7 @@
 package com.papertong.app.data.translate
 
 import com.papertong.app.core.crypto.SecretStore
+import com.papertong.app.core.model.DirectionPair
 import com.papertong.app.core.model.ModelOption
 import com.papertong.app.core.model.TranslateStyle
 import com.papertong.app.core.util.TextChunker
@@ -39,6 +40,8 @@ class TranslationRepository(
     private val errorJson = Json { ignoreUnknownKeys = true }
 
     sealed interface Event {
+        /** 实际采用的方向，在分块之前确定，供 UI 显示「英 → 中」。 */
+        data class Direction(val pair: DirectionPair) : Event
         data class ChunkStart(val index: Int, val total: Int) : Event
         data class Delta(val text: String) : Event
         data class ChunkDone(val index: Int) : Event
@@ -49,6 +52,7 @@ class TranslationRepository(
         text: String,
         style: TranslateStyle,
         model: ModelOption,
+        direction: DirectionPair,
         chunkSize: Int = TextChunker.DEFAULT_CHUNK_SIZE
     ): Flow<Event> = flow {
         val apiKey = secretStore.readApiKey()
@@ -63,7 +67,8 @@ class TranslationRepository(
             return@flow
         }
 
-        val systemPrompt = PromptPresets.systemPrompt(style)
+        emit(Event.Direction(direction))
+        val systemPrompt = PromptPresets.systemPrompt(style, direction.target)
 
         for (chunk in chunks) {
             emit(Event.ChunkStart(chunk.index, chunks.size))

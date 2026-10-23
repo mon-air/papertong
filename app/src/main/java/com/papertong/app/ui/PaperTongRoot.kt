@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.papertong.app.ui.nav.Routes
 import com.papertong.app.ui.screens.about.AboutScreen
+import com.papertong.app.ui.screens.history.HistoryScreen
 import com.papertong.app.ui.screens.settings.SettingsScreen
 import com.papertong.app.ui.screens.translate.TranslateScreen
 
@@ -21,8 +22,12 @@ fun PaperTongRoot(modifier: Modifier = Modifier) {
     ) {
         composable(Routes.TRANSLATE) {
             TranslateScreen(
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenHistory = { navController.navigate(Routes.HISTORY) }
             )
+        }
+        composable(Routes.HISTORY) {
+            HistoryScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(

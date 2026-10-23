@@ -5,6 +5,7 @@ package com.papertong.app.ui.nav
  */
 object Routes {
     const val TRANSLATE = "translate"
+    const val HISTORY = "history"
     const val SETTINGS = "settings"
     const val ABOUT = "about"
 }

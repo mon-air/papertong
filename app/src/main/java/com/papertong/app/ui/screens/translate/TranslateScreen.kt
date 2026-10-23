@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,7 +42,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.papertong.app.core.model.DirectionPair
+import com.papertong.app.core.model.TextLanguage
+import com.papertong.app.core.model.TranslateDirection
 import com.papertong.app.ui.LocalAppContainer
+import com.papertong.app.ui.components.DirectionSelector
 import com.papertong.app.ui.components.PaperCard
 import com.papertong.app.ui.components.SimpleTopBar
 import com.papertong.app.ui.theme.PaperTongTheme
@@ -50,12 +55,14 @@ import com.papertong.app.ui.theme.ReadingTextStyle
 @Composable
 fun TranslateScreen(
     onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val container = LocalAppContainer.current
     val viewModel: TranslateViewModel = viewModel(
         factory = TranslateViewModel.factory(
             container.translationRepository,
+            container.historyStore,
             container.settingsRepository
         )
     )
@@ -63,16 +70,20 @@ fun TranslateScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val style by viewModel.style.collectAsStateWithLifecycle()
     val model by viewModel.model.collectAsStateWithLifecycle()
+    val direction by viewModel.direction.collectAsStateWithLifecycle()
 
     TranslateScreenContent(
         state = state,
         styleLabel = style.label,
         modelLabel = model.label,
+        direction = direction,
+        onDirectionChange = viewModel::setDirection,
         onInputChange = viewModel::onInputChange,
         onTranslate = viewModel::translate,
         onCancel = viewModel::cancel,
         onClear = viewModel::clear,
         onOpenSettings = onOpenSettings,
+        onOpenHistory = onOpenHistory,
         modifier = modifier
     )
 }
@@ -82,11 +93,14 @@ private fun TranslateScreenContent(
     state: TranslateUiState,
     styleLabel: String,
     modelLabel: String,
+    direction: TranslateDirection,
+    onDirectionChange: (TranslateDirection) -> Unit,
     onInputChange: (String) -> Unit,
     onTranslate: () -> Unit,
     onCancel: () -> Unit,
     onClear: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val clipboard = LocalClipboardManager.current
@@ -103,6 +117,13 @@ private fun TranslateScreenContent(
             actions = {
                 if (state.input.isNotEmpty()) {
                     TextButton(onClick = onClear) { Text("清空") }
+                }
+                IconButton(onClick = onOpenHistory) {
+                    Icon(
+                        imageVector = Icons.Outlined.History,
+                        contentDescription = "翻译历史",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 IconButton(onClick = onOpenSettings) {
                     Icon(
@@ -145,7 +166,32 @@ private fun TranslateScreenContent(
 
             Spacer(Modifier.height(10.dp))
 
-            // ---- 风格 / 模型 提示 ----
+            Spacer(Modifier.height(10.dp))
+
+            // ---- 翻译方向 ----
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DirectionSelector(
+                    selected = direction,
+                    onSelect = onDirectionChange
+                )
+                Spacer(Modifier.weight(1f))
+                if (direction == TranslateDirection.Auto &&
+                    state.resolvedDirection != null
+                ) {
+                    Text(
+                        text = state.resolvedDirection.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // ---- 风格 / 模型 / 字数 ----
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -276,15 +322,19 @@ private fun TranslateScreenPreview() {
         TranslateScreenContent(
             state = TranslateUiState(
                 input = "Attention is all you need.",
-                output = "注意力机制就是你所需要的全部。"
+                output = "注意力机制就是你所需要的全部。",
+                resolvedDirection = DirectionPair(TextLanguage.ENGLISH, TextLanguage.CHINESE)
             ),
             styleLabel = "学术专业",
             modelLabel = "deepseek-chat",
+            direction = TranslateDirection.Auto,
+            onDirectionChange = {},
             onInputChange = {},
             onTranslate = {},
             onCancel = {},
             onClear = {},
-            onOpenSettings = {}
+            onOpenSettings = {},
+            onOpenHistory = {}
         )
     }
 }
