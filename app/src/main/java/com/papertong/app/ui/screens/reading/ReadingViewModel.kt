@@ -144,13 +144,19 @@ class ReadingViewModel(
         }
     }
 
-    /**
-     * 界面已经拉起过对话框，把标记清掉。
-     * 必须在 launch() 之前调用：ActivityResult 回来时是新的重组帧，
-     * 留到那时候再清会让对话框弹两次。
-     */
+    /** 界面已经拉起过对话框，把标记清掉，避免重组时再弹一次。 */
     fun onLauncherShown() {
         _export.value = _export.value.copy(launchPending = false)
+    }
+
+    /** 界面侧失败（例如系统没有能接收 Markdown 的应用）也要让用户看到原因。 */
+    fun reportExportError(reason: String) {
+        _export.value = _export.value.copy(
+            launchPending = false,
+            request = null,
+            writing = false,
+            message = "导出失败：$reason"
+        )
     }
 
     fun writeExport(context: Context, uri: Uri) {

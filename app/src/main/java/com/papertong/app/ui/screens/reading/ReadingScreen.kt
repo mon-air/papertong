@@ -99,7 +99,10 @@ fun ReadingScreen(
         val request = exportState.request ?: return@LaunchedEffect
         if (exportState.launchPending) {
             viewModel.onLauncherShown()
-            saveDocument.launch(request.fileName)
+            // 设备上没有任何能接收 text/markdown 的应用时 launch 会抛异常。
+            // 不接住的话 LaunchedEffect 会把整个界面带崩，而这里只是"存不了"
+            runCatching { saveDocument.launch(request.fileName) }
+                .onFailure { viewModel.reportExportError("没有可用的保存位置") }
         }
     }
 
