@@ -29,9 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.papertong.app.BuildConfig
 import com.papertong.app.core.model.ModelOption
+import com.papertong.app.core.model.ReadingLayout
 import com.papertong.app.core.model.TranslateStyle
+import com.papertong.app.core.settings.DataStoreSettingsRepository
 import com.papertong.app.ui.LocalAppContainer
 import com.papertong.app.ui.components.ChoiceItem
 import com.papertong.app.ui.components.ChoiceSheet
@@ -58,10 +62,13 @@ fun SettingsScreen(
     val model by viewModel.model.collectAsStateWithLifecycle()
     val hasApiKey by viewModel.hasApiKey.collectAsStateWithLifecycle()
     val apiKeyState by viewModel.apiKeyState.collectAsStateWithLifecycle()
+    val readingFontScale by viewModel.readingFontScale.collectAsStateWithLifecycle()
+    val readingLayout by viewModel.readingLayout.collectAsStateWithLifecycle()
 
     var showKeyDialog by remember { mutableStateOf(false) }
     var showStyleSheet by remember { mutableStateOf(false) }
     var showModelSheet by remember { mutableStateOf(false) }
+    var showLayoutSheet by remember { mutableStateOf(false) }
 
     // 校验通过后自动收起对话框，提示留在页面上
     LaunchedEffect(apiKeyState.justSaved) {
@@ -84,6 +91,10 @@ fun SettingsScreen(
         onDeleteApiKey = viewModel::deleteApiKey,
         onPickStyle = { showStyleSheet = true },
         onPickModel = { showModelSheet = true },
+        readingFontScale = readingFontScale,
+        readingLayout = readingLayout,
+        onFontScaleChange = viewModel::setReadingFontScale,
+        onPickLayout = { showLayoutSheet = true },
         modifier = modifier
     )
 
@@ -123,6 +134,18 @@ fun SettingsScreen(
             onDismiss = { showModelSheet = false }
         )
     }
+
+    if (showLayoutSheet) {
+        ChoiceSheet(
+            title = "对照排布",
+            items = ReadingLayout.entries.map {
+                ChoiceItem(it, it.label, it.hint)
+            },
+            selected = readingLayout,
+            onSelect = viewModel::setReadingLayout,
+            onDismiss = { showLayoutSheet = false }
+        )
+    }
 }
 
 @Composable
@@ -137,6 +160,10 @@ private fun SettingsScreenContent(
     onDeleteApiKey: () -> Unit,
     onPickStyle: () -> Unit,
     onPickModel: () -> Unit,
+    readingFontScale: Float,
+    readingLayout: ReadingLayout,
+    onFontScaleChange: (Float) -> Unit,
+    onPickLayout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -202,6 +229,17 @@ private fun SettingsScreenContent(
                 )
             }
 
+            GroupLabel("对照阅读")
+            PaperCard(modifier = Modifier.fillMaxWidth()) {
+                SettingsRow(
+                    title = "排布方式",
+                    value = readingLayout.label,
+                    onClick = onPickLayout
+                )
+                RowDivider()
+                FontScaleRow(scale = readingFontScale, onChange = onFontScaleChange)
+            }
+
             GroupLabel("关于")
             PaperCard(modifier = Modifier.fillMaxWidth()) {
                 SettingsRow(
@@ -213,7 +251,8 @@ private fun SettingsScreenContent(
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "版本 0.1.0",
+                // 从 BuildConfig 读，避免改了 build.gradle 却忘了改这里
+                text = "版本 ${BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -221,6 +260,44 @@ private fun SettingsScreenContent(
         }
     }
 }
+
+/**
+ * 字号用 ± 按钮而不是滑块：滑块要拖准 1.0 很难，
+ * 而这里用户想要的通常是"大一点/小一点"。
+ * 到达区间端点时按钮置灰，明确告诉用户没有更多可调。
+ */
+@Composable
+private fun FontScaleRow(scale: Float, onChange: (Float) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "正文字号",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "${(scale * 100).roundToInt()}%",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        TextButton(
+            onClick = { onChange(scale - FONT_SCALE_STEP) },
+            enabled = scale > DataStoreSettingsRepository.MIN_READING_FONT_SCALE
+        ) { Text("A−") }
+        TextButton(
+            onClick = { onChange(scale + FONT_SCALE_STEP) },
+            enabled = scale < DataStoreSettingsRepository.MAX_READING_FONT_SCALE
+        ) { Text("A+") }
+    }
+}
+
+/** 与阅读页保持一致的步长；两处各有一份是刻意的，界面细节不该跨模块共享。 */
+private const val FONT_SCALE_STEP = 0.1f
 
 @Composable
 private fun GroupLabel(text: String) {
@@ -294,7 +371,11 @@ private fun SettingsScreenPreview() {
             onEditApiKey = {},
             onDeleteApiKey = {},
             onPickStyle = {},
-            onPickModel = {}
+            onPickModel = {},
+            readingFontScale = DataStoreSettingsRepository.DEFAULT_READING_FONT_SCALE,
+            readingLayout = ReadingLayout.Stacked,
+            onFontScaleChange = {},
+            onPickLayout = {}
         )
     }
 }

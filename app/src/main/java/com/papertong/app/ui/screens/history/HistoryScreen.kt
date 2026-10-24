@@ -35,8 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.papertong.app.core.history.HistoryEntry
-import com.papertong.app.core.model.ModelOption
-import com.papertong.app.core.model.TranslateStyle
+import com.papertong.app.core.model.modelLabel
+import com.papertong.app.core.model.styleLabel
 import com.papertong.app.ui.LocalAppContainer
 import com.papertong.app.ui.components.PaperCard
 import com.papertong.app.ui.components.SimpleTopBar
@@ -48,6 +48,7 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit,
+    onOpenReading: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val container = LocalAppContainer.current
@@ -61,6 +62,7 @@ fun HistoryScreen(
         onBack = onBack,
         onRemove = viewModel::remove,
         onClearAll = viewModel::clearAll,
+        onOpenReading = onOpenReading,
         modifier = modifier
     )
 }
@@ -71,6 +73,7 @@ private fun HistoryScreenContent(
     onBack: () -> Unit,
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit,
+    onOpenReading: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var pendingClear by remember { mutableStateOf(false) }
@@ -128,6 +131,7 @@ private fun HistoryScreenContent(
                     onToggle = {
                         expandedId = if (expandedId == entry.id) null else entry.id
                     },
+                    onOpenReading = { onOpenReading(entry.id) },
                     onRemove = { onRemove(entry.id) }
                 )
             }
@@ -159,11 +163,17 @@ private fun HistoryCard(
     entry: HistoryEntry,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onOpenReading: () -> Unit,
     onRemove: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
 
-    PaperCard(modifier = Modifier.fillMaxWidth(), onClick = onToggle) {
+    PaperCard(
+        modifier = Modifier.fillMaxWidth(),
+        // 点卡片进对照阅读：这是用户看到一条记录时最可能想做的事。
+        // 想看全文又不想离页的，用下面的"展开/收起"。
+        onClick = onOpenReading
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -213,6 +223,9 @@ private fun HistoryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
+                TextButton(onClick = onToggle) {
+                    Text(if (expanded) "收起" else "展开")
+                }
                 TextButton(
                     onClick = { clipboard.setText(AnnotatedString(entry.translatedText)) }
                 ) { Text("复制译文") }
@@ -220,12 +233,6 @@ private fun HistoryCard(
         }
     }
 }
-
-private fun styleLabel(id: String): String =
-    TranslateStyle.entries.firstOrNull { it.id == id }?.label ?: id
-
-private fun modelLabel(id: String): String =
-    ModelOption.entries.firstOrNull { it.id == id }?.label ?: id
 
 private fun formatTime(epochMillis: Long): String {
     val fmt = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
@@ -250,7 +257,8 @@ private fun HistoryScreenPreview() {
             ),
             onBack = {},
             onRemove = {},
-            onClearAll = {}
+            onClearAll = {},
+            onOpenReading = {}
         )
     }
 }

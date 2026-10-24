@@ -10,6 +10,7 @@ import com.papertong.app.ui.screens.about.AboutScreen
 import com.papertong.app.ui.screens.file.FileImportScreen
 import com.papertong.app.ui.screens.history.HistoryScreen
 import com.papertong.app.ui.screens.ocr.OcrScreen
+import com.papertong.app.ui.screens.reading.ReadingScreen
 import com.papertong.app.ui.screens.settings.SettingsScreen
 import com.papertong.app.ui.screens.translate.TranslateScreen
 
@@ -59,7 +60,18 @@ fun PaperTongRoot(modifier: Modifier = Modifier) {
             )
         }
         composable(Routes.HISTORY) {
-            HistoryScreen(onBack = { navController.popBackStack() })
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenReading = { entryId ->
+                    navController.navigate(Routes.reading(entryId))
+                }
+            )
+        }
+        composable(Routes.READING_PATTERN) { backStackEntry ->
+            ReadingScreen(
+                entryId = backStackEntry.arguments?.getString(Routes.ARG_ENTRY_ID).orEmpty(),
+                onBack = { navController.popBackStack() }
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(

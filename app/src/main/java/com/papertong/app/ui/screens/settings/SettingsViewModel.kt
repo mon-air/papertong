@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.papertong.app.core.crypto.ApiKeyValidator
 import com.papertong.app.core.crypto.SecretStore
 import com.papertong.app.core.model.ModelOption
+import com.papertong.app.core.model.ReadingLayout
 import com.papertong.app.core.model.TranslateStyle
+import com.papertong.app.core.settings.DataStoreSettingsRepository
 import com.papertong.app.core.settings.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,6 +42,16 @@ class SettingsViewModel(
 
     val hasApiKey: StateFlow<Boolean> = secretStore.hasSecret
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val readingFontScale: StateFlow<Float> = settingsRepository.readingFontScale
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            DataStoreSettingsRepository.DEFAULT_READING_FONT_SCALE
+        )
+
+    val readingLayout: StateFlow<ReadingLayout> = settingsRepository.readingLayout
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReadingLayout.Stacked)
 
     private val _apiKeyState = MutableStateFlow(ApiKeyUiState())
     val apiKeyState: StateFlow<ApiKeyUiState> = _apiKeyState.asStateFlow()
@@ -124,6 +136,14 @@ class SettingsViewModel(
 
     fun setModel(value: ModelOption) {
         viewModelScope.launch { settingsRepository.setModel(value) }
+    }
+
+    fun setReadingLayout(value: ReadingLayout) {
+        viewModelScope.launch { settingsRepository.setReadingLayout(value) }
+    }
+
+    fun setReadingFontScale(value: Float) {
+        viewModelScope.launch { settingsRepository.setReadingFontScale(value) }
     }
 
     companion object {
