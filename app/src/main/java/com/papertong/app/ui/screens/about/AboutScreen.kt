@@ -59,6 +59,19 @@ fun AboutScreen(
                 body = "Key 经 Android Keystore 加密后仅保存在本机，不参与系统备份，" +
                     "不会出现在日志中，也不会发往 DeepSeek 以外的任何地址。"
             )
+            Section(
+                title = "翻译历史",
+                // 不用 Markdown 的 ** 强调：这里是纯 Text，星号会原样显示出来
+                body = "历史记录（含原文与译文）存于应用私有目录，且整体用 Keystore 密钥加密，" +
+                    "不参与云端备份与换机迁移。由于密钥只存在于本机，一旦清除应用数据、" +
+                    "换机或恢复出厂设置，历史将永久无法恢复——本应用不保留任何云端副本。"
+            )
+            Section(
+                title = "第三方组件",
+                body = "本应用使用了 Jetpack Compose、OkHttp、PdfBox-Android、ML Kit 等开源/第三方组件。" +
+                    "其中 ML Kit 受 Google APIs 服务条款约束，其余主要为 Apache-2.0。" +
+                    "完整清单与许可见项目仓库的 THIRD_PARTY_LICENSES.md。"
+            )
             Spacer(Modifier.height(32.dp))
         }
     }

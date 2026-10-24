@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 (API 31) 起，云端备份规则由本文件接管，fullBackupContent 只对旧版本生效。
+  两者都要给，否则在新系统上 allowBackup="false" 之外还留着一层默认行为。
+
+  这里把两条通道都显式关掉：
+    cloud-backup    —— 云端备份（Google Drive 等）
+    device-transfer —— 换机直传（Android 12+ 的 D2D 迁移）
+
+  为什么连换机直传也关：历史记录用 Keystore 密钥加密，而 Keystore 密钥
+  **不随备份迁移**。把密文搬到新机只会得到一堆解不开的数据，
+  不如不迁——这也和"本应用不保存云端副本"的定位一致。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

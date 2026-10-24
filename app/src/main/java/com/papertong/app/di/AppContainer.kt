@@ -2,6 +2,7 @@ package com.papertong.app.di
 
 import android.content.Context
 import com.papertong.app.core.crypto.ApiKeyValidator
+import com.papertong.app.core.crypto.KeystoreCipher
 import com.papertong.app.core.crypto.KeystoreSecretStore
 import com.papertong.app.core.crypto.SecretStore
 import com.papertong.app.core.data.appDataStore
@@ -35,7 +36,10 @@ class AppContainer(context: Context) {
     val translationRepository: TranslationRepository = TranslationRepository(secretStore)
 
     val historyStore: FileHistoryStore = FileHistoryStore(
-        file = File(appContext.filesDir, FileHistoryStore.FILE_NAME)
+        file = File(appContext.filesDir, FileHistoryStore.FILE_NAME),
+        // 历史里是用户论文的原文与译文，落盘前整体加密。
+        // 用独立别名，与 API Key 的密钥分开，任一方泄露不影响另一方。
+        cipher = KeystoreCipher(FileHistoryStore.KEY_ALIAS)
     )
 
     /**

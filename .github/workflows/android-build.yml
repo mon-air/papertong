@@ -16,9 +16,20 @@ permissions:
 
 jobs:
   build:
-    name: Assemble Debug APK
+    name: Assemble ${{ matrix.variant }} APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # release 走 R8，ProGuard 规则写错只有这一步会失败。
+        # 之前只构建 debug，等于从未验证过压缩后的包能不能跑。
+        include:
+          - variant: debug
+            task: assembleDebug
+          - variant: release
+            task: assembleRelease
 
     steps:
       - name: Checkout
@@ -85,24 +96,25 @@ jobs:
           gradle --version
           echo "ANDROID_HOME=$ANDROID_HOME"
 
-      - name: Assemble debug
+      - name: Assemble ${{ matrix.variant }}
         run: |
           set -o pipefail
-          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-build.log
+          gradle :app:${{ matrix.task }} --no-daemon --stacktrace 2>&1 | tee gradle-${{ matrix.variant }}.log
 
       # 下载运行日志的 API 需要仓库 admin 权限，而 annotations 是公开可读的。
       # 把编译错误行提升成 annotation，失败原因就能不靠人工翻日志拿到。
       - name: Report build errors
         if: failure()
         run: |
-          if [ ! -f gradle-build.log ]; then
-            echo "::error::gradle-build.log 缺失，失败发生在编译开始之前"
+          LOG="gradle-${{ matrix.variant }}.log"
+          if [ ! -f "$LOG" ]; then
+            echo "::error::$LOG 缺失，失败发生在构建开始之前"
             exit 0
           fi
           # 先落成变量，避免 grep | head 的 SIGPIPE 在 pipefail 下中断本步骤
-          errors=$(grep -E '^e: |^\* What went wrong|^Caused by:|^> Task .* FAILED|^FAILURE:' gradle-build.log | head -n 40 || true)
+          errors=$(grep -E '^e: |^w: |^\* What went wrong|^Caused by:|^> Task .* FAILED|^FAILURE:|R8: ' "$LOG" | head -n 60 || true)
           if [ -z "$errors" ]; then
-            echo "::error::未匹配到编译错误行，请查看下方最后 80 行"
+            echo "::error::未匹配到编译错误行，请查看下方最后 100 行"
           else
             while IFS= read -r line; do
               line=${line//'%'/'%25'}
@@ -110,19 +122,36 @@ jobs:
               echo "::error::${line}"
             done <<< "$errors"
           fi
-          echo "--- last 80 lines ---"
-          tail -n 80 gradle-build.log || true
+          echo "--- last 100 lines ---"
+          tail -n 100 "$LOG" || true
 
       - name: Locate APK
         if: success()
-        run: find app/build/outputs -name "*.apk" -type f -print
+        run: |
+          find app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
+
+      # 体积是 M8 的验收项之一：release 开了 R8 + 资源压缩，
+      # 实际能压到多少只有跑出来才知道，不猜。
+      - name: Report APK size
+        if: success()
+        run: |
+          echo "### ${{ matrix.variant }} APK 体积" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 文件 | 大小 |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          find app/build/outputs/apk -name "*.apk" -type f -printf '%f %s\n' |
+            sort | while read -r name bytes; do
+              mb=$(awk "BEGIN { printf \"%.1f MB\", $bytes/1048576 }")
+              echo "| \`$name\` | $mb |" >> $GITHUB_STEP_SUMMARY
+            done
+          cat $GITHUB_STEP_SUMMARY
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: papertong-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: papertong-${{ matrix.variant }}-apk
+          path: app/build/outputs/apk/${{ matrix.variant }}/*.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -130,10 +159,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-reports
+          name: build-reports-${{ matrix.variant }}
           path: |
-            gradle-build.log
+            gradle-${{ matrix.variant }}.log
             app/build/reports/
+            app/build/outputs/mapping/
             **/build/reports/
           if-no-files-found: ignore
           retention-days: 7
