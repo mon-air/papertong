@@ -3,11 +3,15 @@ package com.papertong.app.data.ocr
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import java.io.BufferedInputStream
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -43,8 +47,13 @@ class OcrEngine {
 
     suspend fun recognize(context: Context, uri: Uri): Result =
         withContext(Dispatchers.IO) {
-            val bitmap = decodeSafely(context, uri, OCR_MAX_DIMENSION)
-                ?: return@withContext Result.Failure("无法读取这张图片，请换一张")
+            val bitmap = when (val decoded = decodeSafely(context, uri, OCR_MAX_DIMENSION)) {
+                is Decoded.Ok -> decoded.bitmap
+                is Decoded.Err -> {
+                    Log.w(TAG, "decode failed for $uri: ${decoded.message}")
+                    return@withContext Result.Failure(decoded.message)
+                }
+            }
 
             // 刻意不调用 bitmap.recycle()：
             // 取消协程时 ML Kit 的内部线程可能仍在读这张位图，
@@ -71,6 +80,7 @@ class OcrEngine {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Log.e(TAG, "ML Kit process failed for $uri", e)
                 Result.Failure("识别失败：${e.message ?: e.javaClass.simpleName}")
             }
         }
@@ -82,7 +92,15 @@ class OcrEngine {
      * 这里统一降采样到预览尺寸。
      */
     suspend fun preview(context: Context, uri: Uri): Bitmap? =
-        withContext(Dispatchers.IO) { decodeSafely(context, uri, PREVIEW_MAX_DIMENSION) }
+        withContext(Dispatchers.IO) {
+            when (val decoded = decodeSafely(context, uri, PREVIEW_MAX_DIMENSION)) {
+                is Decoded.Ok -> decoded.bitmap
+                is Decoded.Err -> {
+                    Log.w(TAG, "preview decode failed for $uri: ${decoded.message}")
+                    null
+                }
+            }
+        }
 
     /**
      * 把识别结果还原成带段落结构的文本。
@@ -97,14 +115,28 @@ class OcrEngine {
         return blocks.joinToString("\n\n")
     }
 
-    /** 解码失败一律当作"读不出来"，不让异常冒到协程外。 */
-    private fun decodeSafely(context: Context, uri: Uri, maxDimension: Int): Bitmap? =
+    /** 解码结果。区分失败原因，才能给用户看得懂的提示而不是一句"读不出来"。 */
+    private sealed interface Decoded {
+        data class Ok(val bitmap: Bitmap) : Decoded
+        data class Err(val message: String) : Decoded
+    }
+
+    private fun decodeSafely(context: Context, uri: Uri, maxDimension: Int): Decoded =
         try {
-            decodeSampled(context, uri, maxDimension)
-        } catch (e: Exception) {
-            null
+            val bitmap = decodeSampled(context, uri, maxDimension)
+            if (bitmap != null) {
+                Decoded.Ok(bitmap)
+            } else {
+                Decoded.Err("无法解码这张图片，可能是格式不受支持")
+            }
         } catch (e: OutOfMemoryError) {
-            null
+            Decoded.Err("图片过大，请换一张")
+        } catch (e: SecurityException) {
+            // Photo Picker 给的 uri 权限是临时的，进程重建后可能已失效
+            Decoded.Err("没有读取该图片的权限，请重新选择")
+        } catch (e: Exception) {
+            Log.w(TAG, "decode threw for $uri", e)
+            Decoded.Err("无法读取这张图片：${e.message ?: e.javaClass.simpleName}")
         }
 
     /**
@@ -115,17 +147,59 @@ class OcrEngine {
      */
     private fun decodeSampled(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, bounds)
-        } ?: return null
+
+        // 注意：inJustDecodeBounds 模式下 decodeStream 按契约返回 null，
+        // 这里要判断的是"流能否打开"，不能拿 decodeStream 的返回值当判据，
+        // 否则永远走 null 分支。
+        val boundsStream = context.contentResolver.openInputStream(uri) ?: return null
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
+
+        // outWidth <= 0 表示字节流不是可解码的图片（或已损坏）
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         val decodeOptions = BitmapFactory.Options().apply {
             inSampleSize = calculateSampleSize(bounds.outWidth, bounds.outHeight, maxDimension)
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        return context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, decodeOptions)
+        val fullStream = context.contentResolver.openInputStream(uri) ?: return null
+        val decoded = fullStream.use { BitmapFactory.decodeStream(it, null, decodeOptions) }
+            ?: return null
+        return applyExifRotation(context, uri, decoded)
+    }
+
+    /**
+     * 应用 EXIF 旋转。
+     *
+     * BitmapFactory 只解像素、不认 EXIF，相机竖拍的照片实际是以横向存储的，
+     * 不旋转的话送进识别器就是横着的版面，行结构会被打乱。
+     */
+    private fun applyExifRotation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+        val degrees = try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                // ExifInterface 需要能 mark/reset 的流，ContentResolver 给的不保证支持
+                val orientation = ExifInterface(BufferedInputStream(stream)).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+                when (orientation) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                    else -> 0
+                }
+            } ?: 0
+        } catch (e: Exception) {
+            // EXIF 读不出来不是致命问题，按不旋转处理
+            0
         }
+
+        if (degrees == 0) return bitmap
+
+        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        // 旋转产生了新位图，旧位图此时还没有交给识别器，可以安全回收
+        if (rotated !== bitmap) bitmap.recycle()
+        return rotated
     }
 
     private fun calculateSampleSize(width: Int, height: Int, maxDimension: Int): Int {
@@ -141,6 +215,8 @@ class OcrEngine {
     }
 
     private companion object {
+        const val TAG = "OcrEngine"
+
         /** 送给识别器的长边上限：再大对精度没有帮助，只会更慢。 */
         const val OCR_MAX_DIMENSION = 2000
 
