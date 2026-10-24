@@ -9,7 +9,11 @@ object Routes {
     const val SETTINGS = "settings"
     const val ABOUT = "about"
     const val OCR = "ocr"
+    const val FILE_IMPORT = "file_import"
 
-    /** OCR 页把识别结果写回上一个页面的 savedStateHandle，用这个 key。 */
-    const val KEY_OCR_RESULT = "ocr_result"
+    /**
+     * OCR 页 / 文件导入页把结果写回上一个页面的 savedStateHandle，用这个 key。
+     * 两者语义相同（都是"待翻译的原文"），共用一个 key。
+     */
+    const val KEY_IMPORTED_TEXT = "imported_text"
 }

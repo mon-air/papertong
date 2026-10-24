@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +61,7 @@ fun TranslateScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenOcr: () -> Unit,
+    onOpenFileImport: () -> Unit,
     incomingText: String?,
     onIncomingTextConsumed: () -> Unit,
     modifier: Modifier = Modifier
@@ -100,6 +102,7 @@ fun TranslateScreen(
         onOpenSettings = onOpenSettings,
         onOpenHistory = onOpenHistory,
         onOpenOcr = onOpenOcr,
+        onOpenFileImport = onOpenFileImport,
         modifier = modifier
     )
 }
@@ -118,6 +121,7 @@ private fun TranslateScreenContent(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenOcr: () -> Unit,
+    onOpenFileImport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val clipboard = LocalClipboardManager.current
@@ -183,12 +187,22 @@ private fun TranslateScreenContent(
 
             Spacer(Modifier.height(10.dp))
 
-            // ---- 导入入口：图片 OCR（文件导入在 M6 接入） ----
-            SourceChip(
-                icon = Icons.Outlined.Image,
-                label = "图片识别",
-                onClick = onOpenOcr
-            )
+            // ---- 导入入口 ----
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SourceChip(
+                    icon = Icons.Outlined.Image,
+                    label = "图片识别",
+                    onClick = onOpenOcr
+                )
+                SourceChip(
+                    icon = Icons.Outlined.UploadFile,
+                    label = "文件导入",
+                    onClick = onOpenFileImport
+                )
+            }
 
             Spacer(Modifier.height(10.dp))
 
@@ -359,7 +373,8 @@ private fun TranslateScreenPreview() {
             onClear = {},
             onOpenSettings = {},
             onOpenHistory = {},
-            onOpenOcr = {}
+            onOpenOcr = {},
+            onOpenFileImport = {}
         )
     }
 }

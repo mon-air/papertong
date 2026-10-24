@@ -54,7 +54,17 @@ class OcrEngine {
                     return@withContext Result.Failure(decoded.message)
                 }
             }
+            recognizeBitmap(bitmap)
+        }
 
+    /**
+     * 直接识别一张已解码的位图。
+     * 扫描版 PDF 的回退路径会自己渲染页面，走这个入口。
+     *
+     * 调用方负责位图的生命周期：本函数不会 recycle 它。
+     */
+    suspend fun recognizeBitmap(bitmap: Bitmap): Result =
+        withContext(Dispatchers.IO) {
             // 刻意不调用 bitmap.recycle()：
             // 取消协程时 ML Kit 的内部线程可能仍在读这张位图，
             // 主动回收会直接触发 "trying to use a recycled bitmap" 崩溃。
@@ -80,7 +90,7 @@ class OcrEngine {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "ML Kit process failed for $uri", e)
+                Log.e(TAG, "ML Kit process failed", e)
                 Result.Failure("识别失败：${e.message ?: e.javaClass.simpleName}")
             }
         }
@@ -91,6 +101,7 @@ class OcrEngine {
      * 直接拿原图丢给 Image 会重新按全尺寸解码，手机照片 4000px 宽约 50MB，
      * 这里统一降采样到预览尺寸。
      */
+    /** 由调用方提供位图的识别入口（扫描件回退用），不接管位图生命周期。 */
     suspend fun preview(context: Context, uri: Uri): Bitmap? =
         withContext(Dispatchers.IO) {
             when (val decoded = decodeSafely(context, uri, PREVIEW_MAX_DIMENSION)) {

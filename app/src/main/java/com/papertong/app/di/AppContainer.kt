@@ -9,6 +9,7 @@ import com.papertong.app.core.history.FileHistoryStore
 import java.io.File
 import com.papertong.app.core.settings.DataStoreSettingsRepository
 import com.papertong.app.core.settings.SettingsRepository
+import com.papertong.app.data.file.OcrPdfFallback
 import com.papertong.app.data.ocr.OcrEngine
 import com.papertong.app.data.translate.TranslationRepository
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,9 @@ class AppContainer(context: Context) {
      * 整个 App 共用一份，不随页面销毁。
      */
     val ocrEngine: OcrEngine = OcrEngine()
+
+    /** 扫描版 PDF 的回退通道：渲染页面 → 本机 OCR。 */
+    val pdfOcrFallback: OcrPdfFallback = OcrPdfFallback(ocrEngine)
 
     /** 用于不绑定界面生命周期的任务（例如后续的后台解析）。 */
     val applicationScope: CoroutineScope =

@@ -15,8 +15,8 @@ android {
         applicationId = "com.papertong.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 6
+        versionName = "0.1.6"
     }
 
     buildTypes {
@@ -100,12 +100,10 @@ dependencies {
     // 设置存储（M2 起使用）
     implementation(libs.androidx.datastore.preferences)
 
-    // 以下依赖按里程碑逐步启用，M1 先不引入，避免首次 Sync 出现
-    // 与本阶段无关的解析失败或 method count 膨胀。
-
-    // TODO(M6)
-    // implementation(libs.pdfbox.android)
-    // implementation(libs.coil.compose)
+    // PDF 文字层抽取。
+    // 注意：pdfbox-android 会连带引入 bouncycastle（bcprov 约 9MB + bcpkix/bcutil 约 1.7MB），
+    // 这是它的解析依赖，不是可选项；当前体积可接受，若后续 APK 过大再考虑按 ABI 拆分。
+    implementation(libs.pdfbox.android)
 
     // OCR：bundled 版，模型随 APK 分发，识别完全离线，不依赖 Play Services 运行时下载
     implementation(libs.mlkit.text.recognition)

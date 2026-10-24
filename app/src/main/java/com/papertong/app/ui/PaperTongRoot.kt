@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.papertong.app.ui.nav.Routes
 import com.papertong.app.ui.screens.about.AboutScreen
+import com.papertong.app.ui.screens.file.FileImportScreen
 import com.papertong.app.ui.screens.history.HistoryScreen
 import com.papertong.app.ui.screens.ocr.OcrScreen
 import com.papertong.app.ui.screens.settings.SettingsScreen
@@ -15,6 +16,18 @@ import com.papertong.app.ui.screens.translate.TranslateScreen
 @Composable
 fun PaperTongRoot(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+
+    /**
+     * OCR 页与文件导入页共用的回填逻辑：
+     * 把结果写进翻译页的 savedStateHandle 再返回，
+     * 这样旋转屏幕或进程重建都不会丢。
+     */
+    fun returnTextToTranslate(text: String) {
+        navController.previousBackStackEntry
+            ?.savedStateHandle
+            ?.set(Routes.KEY_IMPORTED_TEXT, text)
+        navController.popBackStack()
+    }
 
     NavHost(
         navController = navController,
@@ -26,23 +39,23 @@ fun PaperTongRoot(modifier: Modifier = Modifier) {
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
                 onOpenOcr = { navController.navigate(Routes.OCR) },
-                incomingText = entry.savedStateHandle.get<String>(Routes.KEY_OCR_RESULT),
+                onOpenFileImport = { navController.navigate(Routes.FILE_IMPORT) },
+                incomingText = entry.savedStateHandle.get<String>(Routes.KEY_IMPORTED_TEXT),
                 onIncomingTextConsumed = {
-                    entry.savedStateHandle.remove<String>(Routes.KEY_OCR_RESULT)
+                    entry.savedStateHandle.remove<String>(Routes.KEY_IMPORTED_TEXT)
                 }
             )
         }
         composable(Routes.OCR) {
             OcrScreen(
                 onBack = { navController.popBackStack() },
-                onUseText = { text ->
-                    // 回填到翻译页：写进上一个页面的 savedStateHandle 再返回，
-                    // 这样旋转屏幕或进程重建都不会丢。
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set(Routes.KEY_OCR_RESULT, text)
-                    navController.popBackStack()
-                }
+                onUseText = ::returnTextToTranslate
+            )
+        }
+        composable(Routes.FILE_IMPORT) {
+            FileImportScreen(
+                onBack = { navController.popBackStack() },
+                onUseText = ::returnTextToTranslate
             )
         }
         composable(Routes.HISTORY) {
