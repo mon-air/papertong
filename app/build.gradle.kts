@@ -31,6 +31,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            /*
+             * 没有发布用的 keystore，就用 debug 签名。
+             *
+             * 为什么：未签名的 APK 装不上，R8 到底有没有把功能裁坏就无法验证——
+             * 而"能编译过"和"运行时正常"是两件事。用 debug key 签名的包可以直接
+             * adb install 到手机上实测；代价是它不能上架，也不能覆盖已装的正式版。
+             *
+             * 将来真要发布时：在这里加一个从环境变量/keystore.properties 读取
+             * 正式签名的 signingConfig，并把本段改回去。仓库里不放任何密钥文件。
+             */
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
