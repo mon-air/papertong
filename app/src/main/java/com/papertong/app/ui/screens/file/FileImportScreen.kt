@@ -229,10 +229,8 @@ private fun FileImportScreenContent(
     }
 }
 
-/**
- * 显式列出 MIME：只给 *\/* 会让用户在系统选择器里看到一堆打不开的文件。
- * 部分设备把 .md 认成 text/plain，两种情况都覆盖。
- */
+// 显式列出 MIME：只给通配符会让用户在系统选择器里看到一堆打不开的文件。
+// 部分设备把 .md 认成 text/plain，两种情况都覆盖。
 private val SUPPORTED_MIME_TYPES = arrayOf(
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

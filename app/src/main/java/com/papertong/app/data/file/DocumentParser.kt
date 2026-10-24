@@ -69,7 +69,7 @@ object DocumentParser {
     suspend fun parse(
         context: Context,
         uri: Uri,
-        ocr: PdfTextExtractor.OcrFallback? = null
+        ocr: OcrFallback? = null
     ): Result {
         val resolved = resolveMeta(context, uri)
         val kind = resolved.kind

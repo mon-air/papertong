@@ -9,7 +9,7 @@ import com.papertong.app.data.ocr.OcrEngine
  * 单独一个类而不是在 PdfTextExtractor 里直接引用 OcrEngine：
  * 解析层不该知道识别层用的是什么引擎，测试或替换也方便。
  */
-class OcrPdfFallback(private val engine: OcrEngine) : PdfTextExtractor.OcrFallback {
+class OcrPdfFallback(private val engine: OcrEngine) : OcrFallback {
 
     override suspend fun recognize(bitmap: Bitmap): String? =
         when (val result = engine.recognizeBitmap(bitmap)) {

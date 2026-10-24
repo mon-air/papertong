@@ -37,14 +37,6 @@ internal object PdfTextExtractor {
     /** 每页抽出的字符数低于这个值，认为该页没有文字层（扫描页）。 */
     private const val EMPTY_PAGE_THRESHOLD = 30
 
-    /**
-     * 扫描件回退通道。由调用方注入，避免 data 层直接依赖 ui 层的 OcrViewModel。
-     */
-    fun interface OcrFallback {
-        /** 返回识别出的文本；失败时返回 null。 */
-        suspend fun recognize(bitmap: Bitmap): String?
-    }
-
     suspend fun extract(
         context: Context,
         uri: Uri,

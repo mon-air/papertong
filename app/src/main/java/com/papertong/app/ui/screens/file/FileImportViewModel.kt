@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.papertong.app.data.file.DocumentParser
-import com.papertong.app.data.file.PdfTextExtractor
+import com.papertong.app.data.file.OcrFallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +34,7 @@ data class FileImportUiState(
  * 所以这里停在预览态，由用户按"拿去翻译"才继续。
  */
 class FileImportViewModel(
-    private val ocrFallback: PdfTextExtractor.OcrFallback?
+    private val ocrFallback: OcrFallback?
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FileImportUiState())
@@ -73,7 +73,7 @@ class FileImportViewModel(
     }
 
     companion object {
-        fun factory(ocrFallback: PdfTextExtractor.OcrFallback?): ViewModelProvider.Factory =
+        fun factory(ocrFallback: OcrFallback?): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
