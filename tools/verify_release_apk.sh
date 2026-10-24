@@ -38,8 +38,10 @@ REQUIRED=(
 
 FAILED=0
 for symbol in "${REQUIRED[@]}"; do
-  # dex 的字符串表是明文 UTF-8，-a 让 grep 把二进制当文本处理
-  if cat "$WORK"/classes*.dex | grep -a -q -F "$symbol"; then
+  # dex 的字符串表是明文 UTF-8，-a 让 grep 把二进制当文本处理。
+  # 不要写成 cat ... | grep -q：grep -q 匹配到就退出，cat 收到 SIGPIPE
+  # 返回 141，在 pipefail 下整条管道被判失败，明明找到了也会报 MISS。
+  if grep -a -q -F "$symbol" "$WORK"/classes*.dex; then
     echo "  OK   $symbol"
   else
     echo "  MISS $symbol"
@@ -52,10 +54,9 @@ if [ "$FAILED" -ne 0 ]; then
   exit 1
 fi
 
-# 顺带确认日志确实被裁掉了（-assumenosideeffects 生效），
-# 否则 release 里残留调试日志，属于信息泄漏面
-if cat "$WORK"/classes*.dex | grep -a -q -F 'ML Kit process failed'; then
-  echo "  note: 仍能找到被 Log.e 使用的字符串（这是预期的：Log.e 被保留）"
+# Log.e 被刻意保留，这里只作提示，不作为失败条件
+if grep -a -q -F 'ML Kit process failed' "$WORK"/classes*.dex; then
+  echo "  note: Log.e 的字符串仍在（预期：release 保留 Log.w/Log.e 便于排查）"
 fi
 
 echo "release 包关键类检查通过"
