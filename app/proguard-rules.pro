@@ -38,6 +38,11 @@
 
 # 序列化器对象本身（XXX$$serializer）不能被裁
 -keep,includedescriptorclasses class com.papertong.app.**$$serializer { *; }
+# 上面只保证不被裁，类名仍会被混淆。索引式序列化在运行时按字符串名查找
+# 描述符，改名会让检查类名的验证脚本失去意义，也增加排查成本，
+# 因此对数据模型整体禁止改名（体积代价可忽略：项目里只有几条数据类）。
+-keepnames class com.papertong.app.core.history.** { *; }
+-keepnames class com.papertong.app.core.model.** { *; }
 -keepclassmembers class com.papertong.app.** {
     *** Companion;
 }

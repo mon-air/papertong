@@ -41,13 +41,25 @@ for symbol in "${REQUIRED[@]}"; do
   # dex 的字符串表是明文 UTF-8，-a 让 grep 把二进制当文本处理。
   # 不要写成 cat ... | grep -q：grep -q 匹配到就退出，cat 收到 SIGPIPE
   # 返回 141，在 pipefail 下整条管道被判失败，明明找到了也会报 MISS。
-  if grep -a -q -F "$symbol" "$WORK"/classes*.dex; then
+  match=$(grep -a -o -F "$symbol" "$WORK"/classes*.dex | head -n 1 || true)
+  if [ -n "$match" ]; then
     echo "  OK   $symbol"
   else
     echo "  MISS $symbol"
     FAILED=1
   fi
 done
+
+# 失败时把 dex 里 papertong 相关类名打印出来，便于判断是"
+# 被裁掉"还是"被混淆成短名"——这两者的修法完全不同
+if [ "$FAILED" -ne 0 ]; then
+  echo "--- 含 papertong 的字符串样本 ---"
+  grep -a -o -E '[A-Za-z0-9_./$]*[Pp]aper[Tt]ong[A-Za-z0-9_./$]*' "$WORK"/classes*.dex \
+    | sort -u | head -n 60 || true
+  echo "--- serializer 相关字符串样本 ---"
+  grep -a -o -E '[A-Za-z0-9_./$]*serializer[A-Za-z0-9_./$]*' "$WORK"/classes*.dex \
+    | sort -u | head -n 40 || true
+fi
 
 if [ "$FAILED" -ne 0 ]; then
   echo "::error::release 包中缺少必需类，R8 keep 规则未生效"
