@@ -27,13 +27,17 @@ if [ "$DEX_COUNT" -eq 0 ]; then
 fi
 echo "共 $DEX_COUNT 个 dex"
 
-# 逐个检查：这些类的名字一旦消失，说明 keep 规则没生效
+# 逐个检查：这些类的名字一旦消失，说明 keep 规则没生效。
+#
+# 注意 dex 里存的是**类型描述符**（Lcom/papertong/app/Foo;）而不是 Java 全限名
+# （com.papertong.app.Foo）。用全限名去 grep 一定匹配不到——第一版脚本就错在
+# 这里：前四项短类名 OK，最后一项全限名永远 MISS，看起来像 R8 坏了。
 REQUIRED=(
   'HistoryEntry$$serializer'
   'ReadingLayout'
   'TranslateStyle'
   'ModelOption'
-  'com.papertong.app.MainActivity'
+  'MainActivity'
 )
 
 FAILED=0
