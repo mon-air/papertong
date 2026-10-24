@@ -130,6 +130,14 @@ jobs:
         run: |
           find app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
 
+      # R8 裁掉 serializer 时编译与打包都会成功，只有运行时才崩。
+      # CI 没有设备跑 instrumented test，但类名在 dex 里是明文，可以直接查。
+      - name: Verify release APK keeps required classes
+        if: success() && matrix.variant == 'release'
+        run: |
+          chmod +x tools/verify_release_apk.sh
+          tools/verify_release_apk.sh "$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+
       # 体积是 M8 的验收项之一：release 开了 R8 + 资源压缩，
       # 实际能压到多少只有跑出来才知道，不猜。
       - name: Report APK size
